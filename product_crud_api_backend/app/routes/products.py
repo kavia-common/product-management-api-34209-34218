@@ -1,6 +1,7 @@
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import func  # for aggregation
 from ..models import db, Product
 from ..schemas import (
     ProductCreateSchema,
@@ -54,6 +55,34 @@ class ProductsCollection(MethodView):
             return product.to_dict()
         except SQLAlchemyError as exc:
             db.session.rollback()
+            abort(500, message=f"Database error: {exc.__class__.__name__}")
+
+
+@blp.route("/balance")
+class ProductsBalance(MethodView):
+    """Aggregate endpoint for total inventory balance."""
+
+    # PUBLIC_INTERFACE
+    @blp.response(200)
+    def get(self):
+        """Compute and return the total inventory balance.
+
+        Returns:
+          200: JSON object {"total_balance": number}
+        Errors:
+          500: On database errors.
+
+        Notes:
+          Uses SUM(price * quantity) across all products.
+          Ensures JSON-safe numeric by converting to float.
+        """
+        try:
+            # Build aggregation expression: price * quantity, then SUM()
+            total = db.session.query(func.sum(Product.price * Product.quantity)).scalar()
+            # If there are no rows, SUM returns None; treat as 0.0
+            total_balance = float(total or 0.0)
+            return {"total_balance": total_balance}
+        except SQLAlchemyError as exc:
             abort(500, message=f"Database error: {exc.__class__.__name__}")
 
 

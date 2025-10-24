@@ -48,6 +48,12 @@ Also see .env.example for a sample.
   Delete a product.
   curl -i -X DELETE http://localhost:${PORT:-3001}/products/1
 
+- GET /products/balance
+  Returns the total inventory value (sum of price * quantity across all products) as:
+  {"total_balance": <number>}
+  Example:
+  curl -s http://localhost:${PORT:-3001}/products/balance | jq .
+
 ## Validation and error handling
 
 - 400 for validation errors with Marshmallow
